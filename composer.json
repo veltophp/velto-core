@@ -1,0 +1,25 @@
+{
+  "name": "veltophp/velto-core",
+  "description": "Core framework logic for Velto PHP framework.",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "veltophp",
+      "email": "dev@veltophp.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Velto\\Core\\": "core/"
+    },
+    "files": [
+      "core/Helpers.php"
+    ]
+  },
+  "require": {
+    "php": ">=8.0"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
