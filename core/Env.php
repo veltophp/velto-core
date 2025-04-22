@@ -35,7 +35,12 @@ class Env
     }
 
     public static function isDebug(): bool
+    // Check the debug status || True or False 
     {
-        return strtolower(static::get('APP_DEBUG', 'false')) === 'true';
+        $debug = strtolower(static::get('APP_DEBUG', 'false'));
+        // dd("APP_DEBUG:", $debug, $debug === 'true');
+
+        return $debug === 'true';
     }
+
 }

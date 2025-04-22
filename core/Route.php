@@ -28,7 +28,7 @@ class Route
 
         self::$routes[] = $route;
         
-        return new RouteBuilder(count(self::$routes) - 1, $route);
+        // return new RouteBuilder(count(self::$routes) - 1, $route);
     }
 
     private static function normalizeUri($uri)
@@ -46,16 +46,19 @@ class Route
     public static function abort($code, $message = null)
     {
         http_response_code($code);
-        
-        $viewFile = base_path("views/errors/{$code}.vel.php");
+
+        $viewFile = BASE_PATH . "/views/errors/{$code}.vel.php";
+
         if (file_exists($viewFile)) {
             require $viewFile;
+            // echo "Error!!";
         } else {
             echo $message ?? "{$code} Error";
         }
 
         exit;
     }
+
 
     public static function getRoutes()
     {
@@ -120,27 +123,4 @@ class Route
         self::abort(404);
     }
 
-}
-
-class RouteBuilder
-{
-    private $routeIndex;
-    private $route;
-
-    public function __construct($routeIndex, array $route)
-    {
-        $this->routeIndex = $routeIndex;
-        $this->route = $route;
-    }
-
-    public function middleware($middleware)
-    {
-        $this->route['middleware'] = array_merge(
-            $this->route['middleware'],
-            (array)$middleware
-        );
-        
-        \Velto\Core\Route::updateRoute($this->routeIndex, $this->route);
-        return $this;
-    }
 }

@@ -1,37 +1,45 @@
 <?php
 
 use Velto\Core\View;
+use Velto\Core\Env;
 
 /**
  * Returns the base path of the project
  * @param string $path Optional subpath to append
  * @return string Full path
  */
-function base_path($path = '')
+function base_path(string $path = ''): string
 {
-    // Ensures the path is relative to the project root directory
-    return __DIR__ . '/../' . ($path ? '/' . ltrim($path, '/') : '');
+    // Adjust the level based on your project structure
+    $base = dirname(__DIR__, 3); // Typically 3-4 levels up from Helpers.php
+    return $base . ($path ? DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR) : '');
 }
 
 /**
  * Returns the view path for a given view file
- * @param string $view The view name
+ * @param string $view The view name (dot notation)
  * @return string The full path to the view
+ * @throws RuntimeException If view file not found
  */
-function view_path($view)
+function view_path(string $view): string
 {
-    // Path to the views folder, with the view name as parameter
-    return base_path("views/{$view}.vel.php");
+    $viewFile = str_replace('.', DIRECTORY_SEPARATOR, $view) . '.vel.php';
+    $path = base_path('views' . DIRECTORY_SEPARATOR . $viewFile);
+    
+    if (!file_exists($path)) {
+        throw new RuntimeException("View [{$view}] not found at: {$path}");
+    }
+    
+    return $path;
 }
 
 /**
- * Returns the URL for static assets like images, css, js
+ * Returns the URL for static assets
  * @param string $path The asset file path
  * @return string The asset URL
  */
-function asset($path)
+function asset(string $path): string
 {
-    // Returns the asset URL with the '/public' prefix
     return '/public/' . ltrim($path, '/');
 }
 
@@ -40,21 +48,30 @@ function asset($path)
  * @param string $uri The URI you want to use
  * @return string The route URI
  */
-function route($uri)
+function route(string $uri): string
 {
-    // Can be extended to resolve route names
     return $uri;
 }
 
-
 if (!function_exists('view')) {
-    function view(string $view, array $data = []): void
+    /**
+     * Render a view using the View class
+     * @param string $view View name (dot notation)
+     * @param array $data Data to pass to view
+     * @return string Rendered content
+     */
+    function view(string $view, array $data = []): string
     {
-        echo View::render($view, $data);
+        return View::render($view, $data);
     }
 }
 
-function redirect($url) {
+/**
+ * Redirect to a URL
+ * @param string $url The URL to redirect to
+ */
+function redirect(string $url): void
+{
     header("Location: " . filter_var($url, FILTER_SANITIZE_URL));
     exit();
 }
@@ -73,14 +90,14 @@ function abort(int $code = 500, string $message = 'Server Error')
 
     http_response_code($code);
 
-    if (Velto\Core\Env::isDebug()) {
-        $debugView = base_path('views/errors/debug.vel.php');
+    if (Env::isDebug()) {
+        $debugView = BASE_PATH . '/views/errors/debug.vel.php';
         if (file_exists($debugView)) {
             include $debugView;
             exit;
         }
     } else {
-        $errorView = base_path('views/errors/500.vel.php');
+        $errorView = BASE_PATH . "/views/errors/{$code}.vel.php";
         if (file_exists($errorView)) {
             include $errorView;
         } else {
@@ -92,47 +109,49 @@ function abort(int $code = 500, string $message = 'Server Error')
 }
 
 /**
- * Dumps the variable(s) and halts execution
- * @param mixed ...$vars The variables to be dumped
+ * Dump and die - debug helper
+ * @param mixed ...$vars Variables to dump
  */
-function dd(...$vars)
+function dd(...$vars): void
 {
-    echo '<div style="background-color:#2d2d30; color:white; font-family:monospace; padding:20px; border-radius:8px;">';
-    echo '<h4 style="color:#f7c242;">Dumping Variable(s)</h4>';
-    
+    echo '<div style="background:#2d2d30;color:#fff;padding:20px;border-radius:5px;font-family:monospace;">';
+    echo '<h4 style="color:#f7c242;">Debug Dump</h4>';
     foreach ($vars as $var) {
-        echo '<pre style="background-color:#1d1d20; padding:10px; border-radius:8px; font-size:12px;">';
+        echo '<pre style="background:#1d1d20;padding:10px;border-radius:3px;overflow:auto;">';
         var_dump($var);
         echo '</pre>';
     }
-
-    // Halt execution after dumping the variables
+    echo '</div>';
     die();
 }
 
-
-function compile_view($viewPath) {
-    $content = file_get_contents($viewPath);
-    
-    // Convert @include to Template::include
-    $content = preg_replace('/@include\(\'(.*?)\'\)/', '<?php Template::include(\'$1\'); ?>', $content);
-    
-    // Convert @component to Template::component
-    $content = preg_replace('/@component\(\'(.*?)\'(?:,\s*(.*?))?\)/', '<?php Template::component(\'$1\', $2 ?? []); ?>', $content);
-    
-    // Convert @yield
-    $content = preg_replace('/@yield\(\'(.*?)\'(?:,\s*\'(.*?)\')?\)/', '<?php Template::yield(\'$1\', \'$2\' ?? \'\'); ?>', $content);
-    
-    // Convert @section/@endsection
-    $content = preg_replace('/@section\(\'(.*?)\'\)/', '<?php Template::section(\'$1\'); ?>', $content);
-    $content = str_replace('@endsection', '<?php Template::endSection(); ?>', $content);
-    
-    // Convert @extends
-    $content = preg_replace('/@extends\(\'(.*?)\'\)/', '<?php Template::extends(\'$1\'); ?>', $content);
-    
-    $compiledPath = "cache/views/".md5($viewPath).".php";
-    file_put_contents($compiledPath, $content);
-    return $compiledPath;
+/**
+ * Debug dump without dying
+ * @param mixed ...$vars Variables to dump
+ */
+function dump(...$vars): void
+{
+    echo '<div style="background:#2d2d30;color:#fff;padding:20px;border-radius:5px;font-family:monospace;margin:10px; margin-top:150px;">';
+    echo '<h4 style="color:#f7c242;">Debug</h4>';
+    foreach ($vars as $var) {
+        echo '<pre style="background:#1d1d20;padding:10px;border-radius:3px;overflow:auto;">';
+        var_dump($var);
+        echo '</pre>';
+    }
+    echo '</div>';
 }
 
+function css_framework(): string
+{
+    return Env::get('CSS_FRAMEWORK', 'tailwind');
+}
 
+function css_link(): string
+{
+    $framework = css_framework();
+    return match ($framework) {
+        'bootstrap' => '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">',
+        'tailwind'  => '<script src="https://cdn.tailwindcss.com"></script>',
+        default     => '',
+    };
+}

@@ -13,13 +13,13 @@ class App
         try {
             // Initialize environment and session
             self::initialize();
-            
+
             // Load application routes
             self::loadRoutes();
-            
+
             // Dispatch the request
             Route::dispatch();
-            
+
         } catch (Throwable $e) {
             self::handleException($e);
         }
@@ -29,7 +29,7 @@ class App
     {
         // Load environment variables
         Env::load();
-        
+
         // Initialize secure session
         if (session_status() === PHP_SESSION_NONE) {
             session_start([
@@ -44,7 +44,15 @@ class App
 
     protected static function loadRoutes(): void
     {
-        require_once __DIR__ . '/../routes/web.php';
+        // BASE_PATH = root project, 1 level di atas public/
+        $basePath = dirname(getcwd());
+        $routesPath = $basePath . '/routes/web.php';
+
+        if (!file_exists($routesPath)) {
+            throw new \Exception("Routes file not found: $routesPath");
+        }
+
+        require_once $routesPath;
     }
 
     public static function handleException(Throwable $e): void
@@ -55,9 +63,9 @@ class App
         if (Env::isDebug()) {
             self::renderDebugView($e, $code);
         } else {
-            self::renderProductionError($code);
+            self::renderProductionError($e, $code);
         }
-        
+
         exit(1);
     }
 
@@ -68,8 +76,9 @@ class App
 
     protected static function renderDebugView(Throwable $e, int $code): void
     {
-        $viewFile = __DIR__ . '/../views/errors/debug.vel.php';
-        
+
+        $viewFile = BASE_PATH . '/views/errors/debug.vel.php';
+
         if (file_exists($viewFile)) {
             extract([
                 'code' => $code,
@@ -78,18 +87,28 @@ class App
                 'line' => $e->getLine(),
                 'trace' => $e->getTrace(),
             ], EXTR_SKIP);
-            
+
             require $viewFile;
         } else {
             self::renderFallbackError($code, $e);
         }
     }
 
-    protected static function renderProductionError(int $code): void
+    protected static function renderProductionError(Throwable $e, int $code): void
     {
-        $viewFile = __DIR__ . "/../views/errors/{$code}.vel.php";
-        
+
+
+        $viewFile = BASE_PATH . '/views/errors/debug.vel.php';
+
         if (file_exists($viewFile)) {
+            extract([
+                'code' => $code,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTrace(),
+            ], EXTR_SKIP);
+
             require $viewFile;
         } else {
             self::renderFallbackError($code);
@@ -99,7 +118,7 @@ class App
     protected static function renderFallbackError(int $code, ?Throwable $e = null): void
     {
         echo "<h1>{$code} | Server Error</h1>";
-        
+
         if ($e && Env::isDebug()) {
             echo "<pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
         } else {

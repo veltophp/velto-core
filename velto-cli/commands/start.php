@@ -86,8 +86,11 @@ $argv = $_SERVER['argv'] ?? [];
 $useLocalIP = in_array('local-ip', $argv);
 $enableWatch = in_array('watch', $argv);
 
-$publicPath = realpath(__DIR__ . '/../../public');
-$viewPath = realpath(__DIR__ . '/../../views');
+$projectRoot = getcwd(); 
+$publicPath  = realpath($projectRoot . '/public');
+$viewPath    = realpath($projectRoot . '/views');
+
+// $viewPath = realpath(__DIR__ . '/../../views');
 $host = $useLocalIP ? getLocalIP() : 'localhost';
 $port = $useLocalIP ? 8080 : 8000;
 
@@ -120,5 +123,7 @@ if ($pid === -1) {
     }
 } else {
     // Child: run PHP server
-    exec("php -S $host:$port -t $publicPath");
+    // exec("php -S $host:$port -t $publicPath");
+    exec("php -S $host:$port -t \"$publicPath\"");
+
 }

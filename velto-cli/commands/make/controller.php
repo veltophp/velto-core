@@ -17,7 +17,7 @@ if (!str_ends_with($originalName, 'Controller')) {
     $controllerClass = $originalName;
 }
 
-$controllerFile = __DIR__ . '/../../../app/Controllers/' . $controllerClass . '.php';
+$controllerFile = BASE_PATH . '/app/Controllers/' . $controllerClass . '.php';
 
 if (file_exists($controllerFile)) {
     echo "❌ Controller {$controllerClass} already exists.\n";
@@ -28,7 +28,8 @@ $content = <<<PHP
 <?php
 
 namespace App\Controllers;
-use Core\Controller;
+
+use Velto\Core\Controller;
 
 class {$controllerClass} extends Controller
 {
