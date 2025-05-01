@@ -105,6 +105,7 @@ class View
             '/@section\(\'(.*?)\'\)/' => '<?php \Velto\Core\View::startSection(\'$1\'); ?>',
             '/@endsection/' => '<?php \Velto\Core\View::endSection(); ?>',
             '/@yield\(\'(.*?)\'(?:,\s*\'(.*?)\')?\)/' => '<?php echo \Velto\Core\View::yieldSection(\'$1\', \'$2\' ?? \'\'); ?>',
+            '/@include\(\s*\'(.*?)\'\s*,\s*(\[[^\)]*\])\s*\)/' => '<?php \Velto\Core\View::include(\'$1\', $2); ?>',
             '/@include\(\'(.*?)\'\)/' => '<?php \Velto\Core\View::include(\'$1\'); ?>',
 
             // Control structures
