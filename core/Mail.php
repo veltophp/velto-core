@@ -1,5 +1,23 @@
 <?php
 
+/**
+ * Class Mail in namespace Velto\Core.
+ *
+ * Structure: Provides a static method `send()` for sending emails using SMTP.
+ *
+ * How it works:
+ * - `send($to, $subject, $view, $data = [])`:
+ * - Retrieves email configuration from environment variables (MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM_ADDRESS, MAIL_FROM_NAME).
+ * - Loads the email body content by rendering a specified view file (`.vel.php`) located in the `views/mails/` directory, extracting provided `$data` into the view's scope.
+ * - Constructs email headers, including MIME version, content type (HTML), sender information (From and Reply-To).
+ * - Creates the full email message by combining the headers and the rendered body.
+ * - Establishes an SMTP connection to the specified host and port using `fsockopen()`. Returns `false` if the connection fails.
+ * - Defines helper closures `$expected` to read SMTP server responses and `$send` to send commands and optionally check for expected response codes.
+ * - Performs the SMTP handshake: EHLO, AUTH LOGIN (base64 encoding username and password), MAIL FROM, RCPT TO, DATA, sends the email content (including Subject), and QUIT.
+ * - Closes the SMTP socket using `fclose()`.
+ * - Returns `true` if the email sending process completes without fatal errors, `false` if the initial socket connection fails. Note that this basic implementation doesn't have robust error checking for each SMTP command.
+ */
+
 namespace Velto\Core;
 
 class Mail
@@ -13,11 +31,27 @@ class Mail
         $from = Env::get('MAIL_FROM_ADDRESS');
         $fromName = Env::get('MAIL_FROM_NAME');
 
-        // Load email body from view
         ob_start();
         extract($data);
-        require BASE_PATH . "/views/mails/{$view}.vel.php";
+
+        if (str_contains($view, '::')) {
+            [$namespace, $view] = explode('::', $view, 2);
+            if ($namespace === 'axion') {
+                $path = BASE_PATH . "/axion/views/mails/{$view}.vel.php";
+            } else {
+                abort(404, message:'Path mails not found!');
+            }
+        } else {
+            $path = BASE_PATH . "/views/mails/{$view}.vel.php";
+        }
+        if (file_exists($path)) {
+            require $path;
+        } else {
+            ob_end_clean();
+            return false;
+        }
         $body = ob_get_clean();
+
 
         $headers = [
             "MIME-Version: 1.0",
@@ -64,5 +98,7 @@ class Mail
         fclose($socket);
 
         return true;
+
     }
+
 }
