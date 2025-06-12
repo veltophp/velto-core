@@ -1325,3 +1325,21 @@ if (!function_exists('str_limit')) {
         return mb_strimwidth($string, 0, $limit, $end);
     }
 }
+
+if (!function_exists('env')) {
+    function env(string $key, $default = false): bool
+    {
+        $value = Env::get($key, $default);
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $lower = strtolower(trim($value));
+            return in_array($lower, ['true', '1', 'yes', 'on']);
+        }
+
+        return (bool) $value;
+    }
+}
