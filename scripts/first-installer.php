@@ -2,17 +2,17 @@
 
 echo "\n";
 echo "\033[36m=============================================\033[0m\n";
-echo "\033[32m🎉  VeltoPHP has been installed successfully!\033[0m\n";
+echo "\033[32mVeltoPHP V.2 has been installed successfully!\033[0m\n";
 echo "\033[36m=============================================\033[0m\n\n";
 
-echo "Welcome to VeltoPHP 2.0 🚀\n";
+echo "Welcome to VeltoPHP 2.0 \n";
 echo "Let's get you started...\n\n";
 
-$input = readline("👉 Do you want to run database migrations now? (yes/no) [yes]: ");
+$input = readline("Do you want to run database migrations now? (yes/no) [yes]: ");
 $input = strtolower(trim($input)) ?: 'yes';
 
 if ($input === 'yes' || $input === 'y') {
-    echo "\n⏳ Running migrations...\n\n";
+    echo "\n Running migrations...\n\n";
 
     $phpBinary = PHP_BINARY;
     $command = "{$phpBinary} velto migrate";
@@ -33,4 +33,5 @@ if ($input === 'yes' || $input === 'y') {
     echo "\n⚠️  You can run migrations later with: \033[33mphp velto migrate\033[0m\n";
 }
 
-echo "\n🎯 You're all set. Happy coding with \033[36mVeltoPHP 2.0\033[0m!\n\n";
+echo "\n Go to your project directory and run `php velto start`. \n\n";
+echo "\n You're all set. Happy coding with \033[36mVeltoPHP 2.0\033[0m!\n\n";
