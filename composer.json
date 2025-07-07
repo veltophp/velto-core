@@ -1,0 +1,16 @@
+{
+  "name": "veltophp/velto-core",
+  "description": "The core of VeltoPHP Framework",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Velto\\Core\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.3"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
