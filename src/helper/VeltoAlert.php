@@ -24,7 +24,7 @@ if (!function_exists('errorAlert')) {
 if (!function_exists('load_alert_view')) {
     function load_alert_view(string $name): string
     {
-        $path = BASE_PATH . "/resources/views/alerts/{$name}.php";
+        $path = BASE_PATH . "/resources/Views/alerts/{$name}.php";
 
         if (!file_exists($path)) {
             return "<!-- VeltoAlert: File {$name} tidak ditemukan -->";

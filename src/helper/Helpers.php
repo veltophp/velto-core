@@ -62,7 +62,7 @@ if (!function_exists('abort')) {
 
         if (Env::isDebug()) {
 
-            $debugView =BASE_PATH . "/resources/views/errors/debug.vel.php";
+            $debugView =BASE_PATH . "/resources/Views/errors/debug.vel.php";
 
             if (file_exists($debugView)) {
                 include $debugView;
@@ -70,7 +70,7 @@ if (!function_exists('abort')) {
             }
         } else {
 
-            $errorView = BASE_PATH . "/resources/views/errors/{$code}.vel.php";
+            $errorView = BASE_PATH . "/resources/Views/errors/{$code}.vel.php";
 
             if (file_exists($errorView)) {
                 include $errorView;

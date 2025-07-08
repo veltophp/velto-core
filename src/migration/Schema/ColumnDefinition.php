@@ -40,7 +40,6 @@ class ColumnDefinition
     {
         $type = $this->type;
 
-        // Konversi tipe data khusus MySQL/MariaDB
         if ($type === 'BOOLEAN') {
             $type = 'TINYINT(1)';
         }

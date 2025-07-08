@@ -2,7 +2,7 @@
 
 namespace Velto\Core\View;
 
-use Velto\Core\Session;
+use Velto\Core\Session\Session;
 use Velto\Core\Env\Env;
 
 class View
@@ -40,7 +40,7 @@ class View
         self::reset();
     
         // extract($data, EXTR_SKIP);
-        $rawData = $data; // simpan array asli
+        $rawData = $data;
 
         foreach ($rawData as $key => $value) {
             $$key = $value;
@@ -89,21 +89,21 @@ class View
 
         $viewPath = str_replace(['::', '.'], '/', $view) . '.vel.php';
 
-        $globalPath = BASE_PATH . "/resources/views/{$viewPath}";
+        $globalPath = BASE_PATH . "/resources/Views/{$viewPath}";
         if (file_exists($globalPath)) {
             return $globalPath;
         }
 
         $segments = explode('/', $viewPath);
         if (count($segments) < 2) {
-            $module = 'home';
+            $module = 'Home';
             $relativePath = $segments[0];
         } else {
-            $module = array_shift($segments);
+            $module = ucfirst(array_shift($segments));
             $relativePath = implode('/', $segments);
         }
 
-        $templateDirs = ['views', 'Views'];
+        $templateDirs = ['Views'];
         foreach ($templateDirs as $dir) {
             $modulePath = self::$viewsPath . "/$module/$dir/$relativePath";
             if (file_exists($modulePath)) {

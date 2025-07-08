@@ -24,7 +24,7 @@ class Mail
         } else {
             ob_start();
             extract($data);
-            $path = BASE_PATH . "/resources/views/mails/{$view}.vel.php";
+            $path = BASE_PATH . "/resources/Views/mails/{$view}.vel.php";
 
             if (!file_exists($path)) {
                 ob_end_clean();

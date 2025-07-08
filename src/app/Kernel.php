@@ -59,7 +59,7 @@ class Kernel
         foreach ($modules as $module) {
             if ($module === '.' || $module === '..') continue;
 
-            $routeFile = $modulesPath . '/' . $module . '/routes.php';
+            $routeFile = $modulesPath . '/' . $module . '/Routes.php';
 
             if (file_exists($routeFile)) {
                 require_once $routeFile;
@@ -80,7 +80,7 @@ class Kernel
         foreach ($modules as $module) {
             if ($module === '.' || $module === '..') continue;
 
-            $apiFile = $modulesPath . '/' . $module . '/api.php';
+            $apiFile = $modulesPath . '/' . $module . '/Api.php';
 
             if (file_exists($apiFile)) {
                 require_once $apiFile;
@@ -113,7 +113,7 @@ class Kernel
     protected static function renderDebugView(Throwable $e, int $code): void
     {
 
-        $viewFile = BASE_PATH . '/resources/views/errors/debug.vel.php';
+        $viewFile = BASE_PATH . '/resources/Views/errors/debug.vel.php';
 
         if (file_exists($viewFile)) {
             extract([
@@ -135,7 +135,7 @@ class Kernel
     protected static function renderProductionError(Throwable $e, int $code): void
     {
 
-        $viewFile = BASE_PATH . '/resources/views/errors/debug.vel.php';
+        $viewFile = BASE_PATH . '/resources/Views/errors/debug.vel.php';
 
         if (file_exists($viewFile)) {
             extract([
