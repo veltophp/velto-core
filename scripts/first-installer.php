@@ -9,8 +9,9 @@ echo "Welcome to VeltoPHP 2.0 \n";
 echo "Let's get you started...\n\n";
 
 // Copy .env.example to .env if it doesn't already exist
-$envExample = __DIR__ . '/.env.example';
-$env = __DIR__ . '/.env';
+$rootDir = dirname(__DIR__, 4);
+$envExample = $rootDir . '/.env.example';
+$env = $rootDir . '/.env';
 
 if (!file_exists($env) && file_exists($envExample)) {
     if (copy($envExample, $env)) {
@@ -21,7 +22,7 @@ if (!file_exists($env) && file_exists($envExample)) {
 } elseif (file_exists($env)) {
     echo "ℹ️  .env file already exists, skipping copy.\n";
 } else {
-    echo "❌ .env.example not found, cannot create .env file.\n";
+    echo "❌ .env.example not found at: $envExample\n";
 }
 
 $input = readline("Do you want to run database migrations now? (yes/no) [yes]: ");
