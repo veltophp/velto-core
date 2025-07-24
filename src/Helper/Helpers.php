@@ -1513,4 +1513,356 @@ if (!function_exists('deleteImage')) {
 
 }
 
+if (!function_exists('humanDate')) {
+    function humanDate($datetime)
+    {
+        return (new \Velto\Core\Support\Date($datetime))->diffForHumans();
+    }
+}
 
+if (!function_exists('generateUsername')) {
+
+    function generateUsername(string $name): string
+    {
+        $name = preg_replace('/[^a-z0-9]/i', '', $name);
+        $base = strtolower($name);
+        return $base . rand(100, 999);
+    }
+
+}
+
+if (!function_exists('e')) {
+    function e($value, $flags = ENT_QUOTES, $encoding = 'UTF-8', $doubleEncode = true)
+    {
+        return htmlspecialchars($value, $flags, $encoding, $doubleEncode);
+    }
+}
+
+if (!function_exists('is_clean_comment')) {
+    function is_clean_comment(string $comment): bool
+    {
+        $blacklist = include BASE_PATH . '/storage/blacklist_words.php';
+
+        foreach ($blacklist as $badWord) {
+            $pattern = '/\b' . preg_quote($badWord, '/') . '\b/i';
+            if (preg_match($pattern, $comment)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('auto_link')) {
+    function auto_link(string $text): string
+    {
+        // Deteksi URL
+        $pattern = '/(https?:\/\/[^\s<>"\'()]+)/i';
+        return preg_replace_callback($pattern, function ($matches) {
+            $url = htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8');
+            return "<a href=\"{$url}\" target=\"_blank\" class=\"text-blue-500 underline\">{$url}</a>";
+        }, nl2br($text));
+    }
+}    
+
+if (!function_exists('format_comment')) {
+    function format_comment(string $text): string
+    {
+        $safeText = e($text);
+
+        $safeText = preg_replace_callback('/```(.*?)```/s', function ($matches) {
+            $code = trim($matches[1]);
+            return "<pre class=\"bg-gray-100 p-3 rounded overflow-x-auto\"><code>" . htmlspecialchars($code) . "</code></pre>";
+        }, $safeText);
+
+        $safeText = preg_replace("/\n/", "<br>", $safeText);
+
+        return $safeText;
+    }
+}
+
+if (!function_exists('render_comment')) {
+    function render_comment(string $text): string
+    {
+        // Fungsi ambil metadata untuk preview
+        if (!function_exists('fetchUrlMetadata')) {
+            function fetchUrlMetadata(string $url): ?array
+            {
+                // DOMAIN SCAM LIST (tambahkan sesuai kebutuhan)
+                $blacklistedDomains = [
+                    'bit.ly', 'tinyurl.com', 'shadyurl.com', 'malware.test',
+                    'freegift.com', 'claimfreecrypto.com', 'airdrop-now.net'
+                ];
+        
+                // Keyword mencurigakan (opsional)
+                $suspiciousKeywords = [
+                    'free-gift', 'airdrop', 'claim-bonus', 'giveaway', 'get-rich',
+                    'login-verification', 'crypto-drop', 'metamask-verify'
+                ];
+
+                $blacklistedTlds = [
+                    '.cc', '.biz', '.xyz', '.top', '.tk', '.gq', '.ml', '.cf', '.ga',
+                    '.click', '.link', '.club', '.party', '.buzz', '.live', '.fit',
+                    '.today', '.cam', '.monster', '.work', '.site', '.review'
+                ];
+                
+        
+                $host = parse_url($url, PHP_URL_HOST);
+
+                // Cek domain TLD mencurigakan
+                foreach ($blacklistedTlds as $tld) {
+                    if (str_ends_with($host, $tld)) {
+                        return [
+                            'title' => '[⚠️ Suspicious Link Detected]',
+                            'description' => 'Please be careful! This link appears to use a potentially unsafe domain and has been blocked to protect users.',
+                            'image' => 'https://res.cloudinary.com/drbowe2hn/image/upload/v1752897700/SL-011823-55360-07_bc33my.jpg',
+                            'url' => $url,
+                        ];
+                    }
+                }
+                
+                // Cek blacklist berdasarkan host
+                foreach ($blacklistedDomains as $badDomain) {
+                    if (stripos($host, $badDomain) !== false) {
+                        return [
+                            'title' => '[⚠️ Suspicious Link Detected]',
+                            'description' => 'Please be careful! This link appears to use a potentially unsafe domain and has been blocked to protect users.',
+                            'image' => 'https://res.cloudinary.com/drbowe2hn/image/upload/v1752897700/SL-011823-55360-07_bc33my.jpg',
+                            'url' => $url,
+                        ];
+                    }
+                }
+        
+                // Cek keyword mencurigakan
+                foreach ($suspiciousKeywords as $keyword) {
+                    if (stripos($url, $keyword) !== false) {
+                        return [
+                            'title' => '[⚠️ Suspicious Link Detected]',
+                            'description' => 'Please be careful! This link appears to use a potentially unsafe domain and has been blocked to protect users.',
+                            'image' => 'https://res.cloudinary.com/drbowe2hn/image/upload/v1752897700/SL-011823-55360-07_bc33my.jpg',
+                            'url' => $url,
+                        ];
+                    }
+                }
+        
+                $cacheDir = BASE_PATH . '/resources/cache/url_cache/';
+                if (!is_dir($cacheDir)) {
+                    mkdir($cacheDir, 0777, true);
+                }
+        
+                $cacheKey = md5($url);
+                $cacheFile = $cacheDir . $cacheKey . '.json';
+        
+                if (file_exists($cacheFile) && time() - filemtime($cacheFile) < 86400) {
+                    return json_decode(file_get_contents($cacheFile), true);
+                }
+        
+                // Ambil dari internet
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_USERAGENT => 'Mozilla/5.0',
+                    CURLOPT_TIMEOUT => 5,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                ]);
+                $html = curl_exec($ch);
+                curl_close($ch);
+        
+                if (!$html) return null;
+        
+                libxml_use_internal_errors(true);
+                $doc = new DOMDocument();
+                @$doc->loadHTML($html);
+        
+                $xpath = new DOMXPath($doc);
+                $meta = fn($name) => $xpath->evaluate("string(//meta[@property='$name']/@content)")
+                    ?: $xpath->evaluate("string(//meta[@name='$name']/@content)");
+        
+                $title = $doc->getElementsByTagName('title')[0]?->nodeValue ?? '';
+                $description = $meta('og:description') ?: $meta('description');
+                $image = $meta('og:image') ?: null;
+                $canonical = $meta('og:url') ?: $url;
+        
+                $result = [
+                    'title' => trim($title),
+                    'description' => trim($description),
+                    'image' => $image,
+                    'url' => $canonical,
+                ];
+        
+                file_put_contents($cacheFile, json_encode($result));
+        
+                return $result;
+            }
+        }
+        
+        
+
+        // Pisahkan antara code block dan teks biasa
+        $parts = preg_split('/(```[\w-]*\s*\n[\s\S]*?\n```)/i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $processed = '';
+
+        foreach ($parts as $i => $part) {
+            if ($i % 2 === 0) {
+                // Ini bagian teks biasa, escape + nl2br + auto-link
+                $escaped = nl2br(htmlspecialchars($part, ENT_QUOTES, 'UTF-8'));
+
+                $escaped = preg_replace_callback(
+                    '/@([a-zA-Z0-9_]{3,30})/',
+                    function ($matches) {
+                        $username = $matches[1];
+                        $user = \Modules\Auth\Models\User::where('username', $username)->first();
+                        if (!$user) return '@' . $username;
+                
+                        // Tampilkan nama lengkap jika mau
+                        $name = htmlspecialchars($user->name, ENT_QUOTES, 'UTF-8');
+                        return '<a href="/user/' . $username . '" class="text-red-500 hover:underline">@' . $name . '</a>';
+                    },
+                    $escaped
+                );                
+
+                // Auto-link + preview
+                $escaped = preg_replace_callback(
+                    '/((https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}([^\s<>"\'()]*)?)/i',
+                    function ($matches) {
+                        $fullMatch = $matches[0];
+                        $hasProtocol = !empty($matches[2]);
+                        $fullUrl = $hasProtocol ? $fullMatch : 'https://' . $fullMatch;
+
+                        if (!filter_var($fullUrl, FILTER_VALIDATE_URL)) {
+                            return htmlspecialchars($fullMatch, ENT_QUOTES, 'UTF-8');
+                        }
+
+                        $displayUrl = htmlspecialchars($fullMatch, ENT_QUOTES, 'UTF-8');
+                        $safeUrl = htmlspecialchars($fullUrl, ENT_QUOTES, 'UTF-8');
+                        $link = '<a href="' . $safeUrl . '" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline">' . $displayUrl . '</a>';
+
+                        // Ambil metadata
+                        $meta = fetchUrlMetadata($fullUrl);
+                        if (!$meta || !$meta['title']) {
+                            return $link;
+                        }
+
+                        $preview = '<div class="mt-2 p-3 border rounded bg-gray-50 max-w-2xl">';
+                        $preview .= '<div class="flex items-start gap-3">';
+
+                        // Gambar (kiri)
+                        if ($meta['image']) {
+                            $preview .= '<div class="w-32 flex-shrink-0">';
+                            $preview .= '<img src="' . htmlspecialchars($meta['image'], ENT_QUOTES, 'UTF-8') . '" alt="Preview" class="w-full h-32 object-cover rounded">';
+                            $preview .= '</div>';
+                        }
+
+                        // Detail (kanan)
+                        $preview .= '<div class="flex-1">';
+                        $preview .= '<a href="' . htmlspecialchars($fullUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-semibold block mb-1">';
+                        $preview .= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') . '</a>';
+
+                        if (!empty($meta['description'])) {
+                            $preview .= '<p class="text-gray-600 text-sm line-clamp-3">' . htmlspecialchars($meta['description'], ENT_QUOTES, 'UTF-8') . '</p>';
+                        }
+                        $preview .= '</div>'; // end detail
+                        $preview .= '</div>'; // end flex
+                        $preview .= '</div>'; // end wrapper
+
+
+                        return $link . $preview;
+                    },
+                    $escaped
+                );
+
+                $processed .= $escaped;
+            } else {
+                // Ini bagian code block
+                $processed .= preg_replace_callback('/```(\w+)?\s*\n([\s\S]*?)\n```/i', function ($matches) {
+                    $lang = strtolower(preg_replace('/[^\w-]/', '', $matches[1] ?? 'text'));
+                    $code = $matches[2];
+                    $code = str_replace(["\r\n", "\r"], "\n", $code);
+
+                    $lines = explode("\n", $code);
+                    $minIndent = null;
+                    foreach ($lines as $line) {
+                        if (trim($line) !== '') {
+                            $indent = strlen($line) - strlen(ltrim($line));
+                            $minIndent = ($minIndent === null) ? $indent : min($minIndent, $indent);
+                        }
+                    }
+                    if ($minIndent > 0) {
+                        foreach ($lines as &$line) {
+                            if (strlen($line) >= $minIndent) {
+                                $line = substr($line, $minIndent);
+                            }
+                        }
+                    }
+                    $code = implode("\n", $lines);
+                    $code = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
+
+                    return '<pre class="bg-gray-800 text-gray-100 p-4 rounded overflow-x-auto text-sm font-mono whitespace-pre"><code class="language-' . $lang . '">' . $code . '</code></pre>';
+                }, $part);
+            }
+        }
+
+        return $processed ?? '';
+    }
+}
+
+if (!function_exists('collect')) {
+    function collect(array $items): \Velto\Core\Support\Collection
+    {
+        return new \Velto\Core\Support\Collection($items);
+    }
+    
+}
+
+if (!function_exists('og_image')) {
+    function og_image(string $path): string
+    {
+        $cleanPath = preg_replace('#^/public#', '', $path);
+        $cleanPath = ltrim($cleanPath, '/');
+
+        $host = $_SERVER['HTTP_HOST'] ?? '127.0.0.1:8000';
+        $serverName = $_SERVER['SERVER_NAME'] ?? '';
+        
+        $isLocal = str_contains($host, '127.') || str_contains($host, 'localhost') || str_contains($host, '0.0.0.0') ||
+                   in_array($serverName, ['127.0.0.1', 'localhost', '0.0.0.0']);
+
+        $scheme = $isLocal ? 'http' : 'https';
+
+        return $scheme . '://' . $host . '/' . $cleanPath;
+    }
+}
+
+if (!function_exists('auth')) {
+    function auth() {
+        if (array_key_exists('user', $_SESSION) && (is_array($_SESSION['user']) || is_object($_SESSION['user']))) {
+            return (object) $_SESSION['user'];
+        }
+
+        return (object) ['role' => null];
+    }
+}
+
+if (!function_exists('filter_array')) {
+    function filter_array(array $items, callable $callback): array {
+        return array_values(array_filter($items, $callback));
+    }
+}
+
+if (!function_exists('sort_by_desc')) {
+    function sort_by_desc(array $items, callable $callback): array {
+        usort($items, function ($a, $b) use ($callback) {
+            return $callback($b) <=> $callback($a);
+        });
+        return $items;
+    }
+}
+
+if (!function_exists('str_limit')) {
+    function str_limit($value, $limit = 100, $end = '...')
+    {
+        $value = trim($value);
+        return mb_strimwidth($value, 0, $limit, $end);
+    }
+}

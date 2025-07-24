@@ -12,13 +12,30 @@ class TableBuilder
         $this->driver = strtolower($driver);
     }
 
+    protected array $constraints = [];
+
+    public function unique(array $columns)
+    {
+        if ($this->driver === 'sqlite') {
+            $this->constraints[] = "UNIQUE (" . implode(', ', $columns) . ")";
+        } else {
+            $name = 'unique_' . implode('_', $columns);
+            $this->constraints[] = "CONSTRAINT {$name} UNIQUE (" . implode(', ', $columns) . ")";
+        }
+    }
+
+
+    public function getConstraints(): array
+    {
+        return $this->constraints;
+    }
+
+
     public function id($name = 'id')
     {
         if ($this->driver === 'sqlite') {
-            // SQLite AUTO_INCREMENT menggunakan "INTEGER PRIMARY KEY AUTOINCREMENT"
             $this->columns[] = "{$name} INTEGER PRIMARY KEY AUTOINCREMENT";
         } else {
-            // MySQL/MariaDB AUTO_INCREMENT
             $this->columns[] = "{$name} INT PRIMARY KEY AUTO_INCREMENT";
         }
     }
@@ -55,7 +72,7 @@ class TableBuilder
 
     public function float($name, $precision = 8, $scale = 2)
     {
-        return $this->addColumn(new ColumnDefinition($name, "FLOAT"));
+        return $this->addColumn(new ColumnDefinition($name, 'FLOAT'));
     }
 
     public function date($name)
@@ -66,6 +83,13 @@ class TableBuilder
     public function datetime($name)
     {
         return $this->addColumn(new ColumnDefinition($name, 'DATETIME'));
+    }
+
+    public function enum($name, array $values)
+    {
+        $column = new ColumnDefinition($name, 'ENUM');
+        $column->enum($values);
+        return $this->addColumn($column);
     }
 
     public function timestamps()
@@ -83,7 +107,8 @@ class TableBuilder
     public function getColumnsSQL()
     {
         return implode(", ", array_map(function ($col) {
-            return is_string($col) ? $col : $col->toSQL();
+            return is_string($col) ? $col : $col->toSQL($this->driver);
         }, $this->columns));
     }
+
 }

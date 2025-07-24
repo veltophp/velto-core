@@ -7,6 +7,7 @@ class ColumnDefinition
     public $name;
     public $type;
     public $length;
+    public $enumValues = null;
     public $unique = false;
     public $nullable = false;
     public $default = null;
@@ -16,6 +17,15 @@ class ColumnDefinition
         $this->name = $name;
         $this->type = strtoupper($type);
         $this->length = $length;
+    }
+
+    public function enum(array $values)
+    {
+        $this->type = 'ENUM';
+        $this->enumValues = array_map(function ($val) {
+            return "'" . addslashes($val) . "'";
+        }, $values);
+        return $this;
     }
 
     public function unique()
@@ -36,28 +46,29 @@ class ColumnDefinition
         return $this;
     }
 
-    public function toSQL()
+    public function toSQL(string $driver = 'mysql')
     {
-        $type = $this->type;
-
-        if ($type === 'BOOLEAN') {
-            $type = 'TINYINT(1)';
-        }
-
         $parts = [];
-
-        if ($this->length) {
-            $parts[] = "{$this->name} {$type}({$this->length})";
+    
+        // ENUM support
+        if ($this->type === 'ENUM' && is_array($this->enumValues)) {
+            if ($driver === 'sqlite') {
+                // Simulasikan ENUM sebagai TEXT di SQLite
+                $typeSQL = "TEXT";
+            } else {
+                $typeSQL = "ENUM(" . implode(',', $this->enumValues) . ")";
+            }
+        } elseif ($this->type === 'BOOLEAN') {
+            $typeSQL = ($driver === 'sqlite') ? "INTEGER" : "TINYINT(1)";
+        } elseif ($this->length) {
+            $typeSQL = "{$this->type}({$this->length})";
         } else {
-            $parts[] = "{$this->name} {$type}";
+            $typeSQL = $this->type;
         }
-
-        if ($this->nullable) {
-            $parts[] = "NULL";
-        } else {
-            $parts[] = "NOT NULL";
-        }
-
+    
+        $parts[] = "{$this->name} {$typeSQL}";
+        $parts[] = $this->nullable ? "NULL" : "NOT NULL";
+    
         if (!is_null($this->default)) {
             if (is_string($this->default)) {
                 $default = "'" . addslashes($this->default) . "'";
@@ -66,14 +77,15 @@ class ColumnDefinition
             } else {
                 $default = $this->default;
             }
+    
             $parts[] = "DEFAULT {$default}";
         }
-
+    
         if ($this->unique) {
             $parts[] = "UNIQUE";
         }
-
+    
         return implode(" ", $parts);
-    }   
-
+    }
+    
 }

@@ -19,12 +19,17 @@ class Migration
 
     public function createTable($tableName, callable $callback)
     {
-        // Kirim driver ke TableBuilder
         $builder = new TableBuilder($this->driver);
         $callback($builder);
         $columns = $builder->getColumnsSQL();
+        $constraints = $builder->getConstraints();
 
-        $sql = "CREATE TABLE IF NOT EXISTS {$tableName} ({$columns})";
+        $allParts = array_filter(array_merge(
+            explode(',', $columns),
+            $constraints
+        ), fn($line) => trim($line) !== '');
+
+        $sql = "CREATE TABLE IF NOT EXISTS {$tableName} (" . implode(', ', $allParts) . ")";
         $this->db->exec($sql);
     }
 
