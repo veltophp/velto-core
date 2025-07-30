@@ -34,19 +34,17 @@ class Env
         $value = $_ENV[$key] ?? getenv($key) ?? $default;
 
         if (is_string($value)) {
-            $value = strtolower(trim($value));
-
-            // dd($value);
-
-            return match($value) {
+            $trimmed = trim($value);
+            return match(strtolower($trimmed)) {
                 'true' => true,
                 'false' => false,
-                default => $value,
+                default => $trimmed,
             };
         }
 
         return $value;
     }
+
 
     public static function isDebug(): bool
     {

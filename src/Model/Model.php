@@ -20,7 +20,6 @@ class Model
     protected bool $timestamps = true;
     protected ?string $searchError = null;
 
-
     public function __construct()
     {
         $this->init();
@@ -599,50 +598,59 @@ class Model
     {
         $term = trim($term);
         $instance = new static;
-
-        // Empty input
+    
+        // Validasi: kosong
         if ($term === '') {
             $instance->searchError = 'Search term cannot be empty.';
-            return $instance;
+            return $instance->where('id', '=', -999999);
         }
-
-        // Too short
+    
+        // Validasi: terlalu pendek
         if (mb_strlen($term) < 2) {
             $instance->searchError = 'Search term must be at least 2 characters.';
-            return $instance;
+            return $instance->where('id', '=', -999999);
         }
-
-        // Dangerous characters or SQL injection keywords
-        if (preg_match('/[\'"=;<>]|--|\b(SELECT|DROP|INSERT|DELETE|UPDATE|OR|AND)\b/i', $term)) {
+    
+        // Validasi: karakter berbahaya (XSS, SQL injection ringan)
+        if ($term !== strip_tags($term) || preg_match('/[\'"=;<>]|--|\b(SELECT|DROP|INSERT|DELETE|UPDATE|OR|AND)\b/i', $term)) {
             $instance->searchError = 'The search input contains disallowed characters.';
-            return $instance;
+            return $instance->where('id', '=', -999999);
         }
-
-        // Sanitize basic
-        $term = strip_tags($term);
-        $term = htmlspecialchars($term, ENT_QUOTES, 'UTF-8');
-        $term = str_replace(['%', '_'], ['\%', '\_'], $term);
-
-        // Get searchable columns
+    
+        // Sanitasi input
+        $term = strip_tags($term); // buang tag HTML
+        $term = htmlspecialchars($term, ENT_QUOTES, 'UTF-8'); // encode karakter khusus
+        $term = str_replace(['%', '_'], ['\%', '\_'], $term); // escape wildcard SQL
+    
+        // Ambil daftar kolom pencarian dari properti 'searchable'
         if (empty($columns) && property_exists($instance, 'searchable')) {
             $columns = $instance->searchable;
         }
-
+    
         if (empty($columns)) {
             $instance->searchError = 'No searchable columns are defined.';
-            return $instance;
+            return $instance->where('id', '=', -999999);
+        }
+    
+        // Bangun query WHERE (column LIKE ...)
+        foreach ($columns as $i => $column) {
+            $instance = $i === 0
+                ? $instance->where($column, 'LIKE', "%$term%")
+                : $instance->orWhere($column, 'LIKE', "%$term%");
+        }
+    
+        return $instance;
+    }
+    
+    public static function with(string|array $relations): static
+    {
+        $instance = new static;
+
+        if (is_string($relations)) {
+            $relations = [$relations];
         }
 
-        // Apply search conditions
-        $first = true;
-        foreach ($columns as $column) {
-            if ($first) {
-                $instance = $instance->where($column, 'LIKE', "%$term%");
-                $first = false;
-            } else {
-                $instance = $instance->orWhere($column, 'LIKE', "%$term%");
-            }
-        }
+        $instance->with = $relations;
 
         return $instance;
     }

@@ -84,39 +84,71 @@ class View
 
     protected static function resolveViewPath(string $view): string
     {
-        
         $original = $view;
 
         $viewPath = str_replace(['::', '.'], '/', $view) . '.vel.php';
 
-        $globalPath = BASE_PATH . "/resources/Views/{$viewPath}";
-        if (file_exists($globalPath)) {
-            return $globalPath;
+        // Global path (resources/Views)
+        $globalBase = BASE_PATH . "/resources/Views/";
+        $fullGlobalPath = self::findInsensitivePath($globalBase, $viewPath);
+        if ($fullGlobalPath !== null) {
+            return $fullGlobalPath;
         }
 
+        // Module path (modules/ModuleName/Views)
         $segments = explode('/', $viewPath);
         if (count($segments) < 2) {
             $module = 'Home';
             $relativePath = $segments[0];
         } else {
-            $module = ucfirst(array_shift($segments));
+            $module = array_shift($segments);
             $relativePath = implode('/', $segments);
         }
 
         $templateDirs = ['Views'];
         foreach ($templateDirs as $dir) {
-            $modulePath = self::$viewsPath . "/$module/$dir/$relativePath";
-            if (file_exists($modulePath)) {
+            $moduleBase = self::$viewsPath . "/$module/$dir/";
+            $modulePath = self::findInsensitivePath($moduleBase, $relativePath);
+            if ($modulePath !== null) {
                 return $modulePath;
             }
         }
 
+        // Error if nothing found
         $tried = array_map(fn($d) => self::$viewsPath . "/$module/$d/$relativePath", $templateDirs);
-        $tried[] = $globalPath;
-        
+        $tried[] = $globalBase . $viewPath;
 
         throw new \RuntimeException("View [$original] not found. Tried:\n- " . implode("\n- ", $tried));
     }
+
+    protected static function findInsensitivePath(string $baseDir, string $relativePath): ?string
+    {
+        $parts = explode('/', $relativePath);
+        $currentPath = rtrim($baseDir, '/');
+
+        foreach ($parts as $part) {
+            if (!is_dir($currentPath) && !file_exists($currentPath)) {
+                return null;
+            }
+
+            $found = null;
+            foreach (scandir($currentPath) as $item) {
+                if (strcasecmp($item, $part) === 0) {
+                    $found = $item;
+                    break;
+                }
+            }
+
+            if ($found === null) {
+                return null;
+            }
+
+            $currentPath .= '/' . $found;
+        }
+
+        return $currentPath;
+    }
+
 
     protected static function compileView(string $viewPath): string
     {
