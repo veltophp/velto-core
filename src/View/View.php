@@ -85,68 +85,107 @@ class View
     protected static function resolveViewPath(string $view): string
     {
         $original = $view;
-
         $viewPath = str_replace(['::', '.'], '/', $view) . '.vel.php';
-
-        // Global path (resources/Views)
+    
+        // Debugging: Log the view path being resolved
+        error_log("Resolving view path for: $view => $viewPath");
+    
+        // 1. Check global path (resources/Views)
         $globalBase = BASE_PATH . "/resources/Views/";
         $fullGlobalPath = self::findInsensitivePath($globalBase, $viewPath);
         if ($fullGlobalPath !== null) {
+            error_log("Found in global path: $fullGlobalPath");
             return $fullGlobalPath;
         }
-
-        // Module path (modules/ModuleName/Views)
+    
+        // 2. Check module paths
         $segments = explode('/', $viewPath);
         if (count($segments) < 2) {
             $module = 'Home';
             $relativePath = $segments[0];
         } else {
-            $module = array_shift($segments);
-            $relativePath = implode('/', $segments);
+            $module = ucfirst($segments[0]); // Ensure proper case for module name
+            $relativePath = implode('/', array_slice($segments, 1));
         }
-
-        $templateDirs = ['Views'];
+    
+        // Check multiple possible view directories
+        $templateDirs = ['Views', 'views', 'View', 'view'];
         foreach ($templateDirs as $dir) {
             $moduleBase = self::$viewsPath . "/$module/$dir/";
+            error_log("Checking module path: $moduleBase$relativePath");
+            
             $modulePath = self::findInsensitivePath($moduleBase, $relativePath);
             if ($modulePath !== null) {
+                error_log("Found in module path: $modulePath");
                 return $modulePath;
             }
         }
-
-        // Error if nothing found
-        $tried = array_map(fn($d) => self::$viewsPath . "/$module/$d/$relativePath", $templateDirs);
-        $tried[] = $globalBase . $viewPath;
-
-        throw new \RuntimeException("View [$original] not found. Tried:\n- " . implode("\n- ", $tried));
+    
+        // Enhanced error reporting with directory existence checks
+        $errorDetails = [
+            "View [$original] not found.",
+            "Search path: $viewPath",
+            "Global path: " . $globalBase . $viewPath . " (Exists: " . (file_exists($globalBase) ? 'Yes' : 'No') . ")",
+            "Module base: " . self::$viewsPath . " (Exists: " . (file_exists(self::$viewsPath) ? 'Yes' : 'No') . ")",
+            "Module tried paths:"
+        ];
+    
+        foreach ($templateDirs as $dir) {
+            $path = self::$viewsPath . "/$module/$dir/$relativePath";
+            $errorDetails[] = "- $path (Exists: " . (file_exists(dirname($path)) ? 'Yes' : 'No') . ")";
+        }
+    
+        throw new \RuntimeException(implode("\n", $errorDetails));
     }
-
+    
     protected static function findInsensitivePath(string $baseDir, string $relativePath): ?string
     {
+        // Normalize paths
+        $baseDir = rtrim(str_replace('\\', '/', $baseDir), '/') . '/';
+        $relativePath = ltrim($relativePath, '/');
+    
         $parts = explode('/', $relativePath);
-        $currentPath = rtrim($baseDir, '/');
-
+        $currentPath = $baseDir;
+    
         foreach ($parts as $part) {
-            if (!is_dir($currentPath) && !file_exists($currentPath)) {
+            if (!file_exists($currentPath) || !is_dir($currentPath)) {
+                error_log("Directory not found: $currentPath");
                 return null;
             }
-
+    
+            $items = scandir($currentPath);
+            if ($items === false) {
+                error_log("Failed to scan directory: $currentPath");
+                return null;
+            }
+    
             $found = null;
-            foreach (scandir($currentPath) as $item) {
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') {
+                    continue;
+                }
+                
                 if (strcasecmp($item, $part) === 0) {
                     $found = $item;
                     break;
                 }
             }
-
+    
             if ($found === null) {
+                error_log("File not found: $part in $currentPath");
                 return null;
             }
-
-            $currentPath .= '/' . $found;
+    
+            $currentPath .= $found . '/';
         }
-
-        return $currentPath;
+    
+        $finalPath = rtrim($currentPath, '/');
+        if (!file_exists($finalPath)) {
+            error_log("Final path not found: $finalPath");
+            return null;
+        }
+    
+        return $finalPath;
     }
 
 
