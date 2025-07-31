@@ -86,56 +86,50 @@ class View
     {
         $original = $view;
         $viewPath = str_replace(['::', '.'], '/', $view) . '.vel.php';
-    
-        // Debugging: Log the view path being resolved
-        error_log("Resolving view path for: $view => $viewPath");
-    
+
         // 1. Check global path (resources/Views)
         $globalBase = BASE_PATH . "/resources/Views/";
         $fullGlobalPath = self::findInsensitivePath($globalBase, $viewPath);
         if ($fullGlobalPath !== null) {
-            error_log("Found in global path: $fullGlobalPath");
             return $fullGlobalPath;
         }
-    
-        // 2. Check module paths
+
+        // 2. Check module paths with original case first
         $segments = explode('/', $viewPath);
         if (count($segments) < 2) {
             $module = 'Home';
             $relativePath = $segments[0];
         } else {
-            $module = ucfirst($segments[0]); // Ensure proper case for module name
+            // Try original case first
+            $module = $segments[0];
             $relativePath = implode('/', array_slice($segments, 1));
         }
-    
-        // Check multiple possible view directories
+
         $templateDirs = ['Views', 'views', 'View', 'view'];
         foreach ($templateDirs as $dir) {
             $moduleBase = self::$viewsPath . "/$module/$dir/";
-            error_log("Checking module path: $moduleBase$relativePath");
-            
             $modulePath = self::findInsensitivePath($moduleBase, $relativePath);
             if ($modulePath !== null) {
-                error_log("Found in module path: $modulePath");
                 return $modulePath;
             }
         }
-    
-        // Enhanced error reporting with directory existence checks
-        $errorDetails = [
-            "View [$original] not found.",
-            "Search path: $viewPath",
-            "Global path: " . $globalBase . $viewPath . " (Exists: " . (file_exists($globalBase) ? 'Yes' : 'No') . ")",
-            "Module base: " . self::$viewsPath . " (Exists: " . (file_exists(self::$viewsPath) ? 'Yes' : 'No') . ")",
-            "Module tried paths:"
-        ];
-    
-        foreach ($templateDirs as $dir) {
-            $path = self::$viewsPath . "/$module/$dir/$relativePath";
-            $errorDetails[] = "- $path (Exists: " . (file_exists(dirname($path)) ? 'Yes' : 'No') . ")";
+
+        // If not found with original case, try capitalized version
+        if (count($segments) >= 2) {
+            $module = ucfirst($segments[0]);
+            $relativePath = implode('/', array_slice($segments, 1));
+
+            foreach ($templateDirs as $dir) {
+                $moduleBase = self::$viewsPath . "/$module/$dir/";
+                $modulePath = self::findInsensitivePath($moduleBase, $relativePath);
+                if ($modulePath !== null) {
+                    return $modulePath;
+                }
+            }
         }
-    
-        throw new \RuntimeException(implode("\n", $errorDetails));
+
+        // Enhanced error reporting
+        throw new \RuntimeException("View [$original] not found in any location");
     }
 
     protected static function findInsensitivePath(string $baseDir, string $relativePath): ?string
