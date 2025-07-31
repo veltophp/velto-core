@@ -1413,13 +1413,13 @@ if (!function_exists('imageName')) {
 }
 
 if (!function_exists('imageSave')) {
-    function imageSave(string $imageName)
+    function imageSave(?string $imageName)
     {
         return new class($imageName) {
-            protected string $filename;
+            protected ?string $filename;
             protected $file = null;
 
-            public function __construct(string $filename)
+            public function __construct(?string $filename)
             {
                 $this->filename = $filename;
             }
@@ -1430,10 +1430,11 @@ if (!function_exists('imageSave')) {
                 return $this;
             }
 
-            public function to(string $relativePath): string
+            public function to(string $relativePath): ?string
             {
-                if ($this->file === null) {
-                    throw new \RuntimeException('No uploaded file provided. Call from($file) first.');
+                if ($this->file === null || empty($this->filename)) {
+                    // Tidak ada file yang diberikan, cukup return null
+                    return null;
                 }
 
                 $targetDir = public_path($relativePath);
@@ -1444,21 +1445,17 @@ if (!function_exists('imageSave')) {
 
                 if (is_object($this->file) && method_exists($this->file, 'move')) {
                     $this->file->move($targetDir, $this->filename);
-
                 } else {
-
                     $tmpPath = $this->file['tmp_name'] ?? null;
-                
+
                     if (!$tmpPath || !is_uploaded_file($tmpPath)) {
-                        throw new \RuntimeException('Invalid uploaded file.');
+                        return null; // Tidak valid, abaikan
                     }
-                
+
                     move_uploaded_file($tmpPath, "{$targetDir}/{$this->filename}");
                 }
-                
-                // return "{$relativePath}/{$this->filename}";
-                return '/' . trim($relativePath, '/') . '/' . $this->filename;
 
+                return '/' . trim($relativePath, '/') . '/' . $this->filename;
             }
         };
     }
