@@ -86,50 +86,75 @@ class View
     {
         $original = $view;
         $viewPath = str_replace(['::', '.'], '/', $view) . '.vel.php';
-
-        // 1. Check global path (resources/Views)
+    
+        // 1. First check global views path
         $globalBase = BASE_PATH . "/resources/Views/";
         $fullGlobalPath = self::findInsensitivePath($globalBase, $viewPath);
         if ($fullGlobalPath !== null) {
             return $fullGlobalPath;
         }
-
-        // 2. Check module paths with original case first
+    
+        // 2. Handle module views with dynamic case handling
         $segments = explode('/', $viewPath);
         if (count($segments) < 2) {
             $module = 'Home';
             $relativePath = $segments[0];
         } else {
-            // Try original case first
-            $module = $segments[0];
+            $module = $segments[0]; // Preserve original case
             $relativePath = implode('/', array_slice($segments, 1));
         }
-
-        $templateDirs = ['Views', 'views', 'View', 'view'];
-        foreach ($templateDirs as $dir) {
-            $moduleBase = self::$viewsPath . "/$module/$dir/";
-            $modulePath = self::findInsensitivePath($moduleBase, $relativePath);
-            if ($modulePath !== null) {
-                return $modulePath;
-            }
-        }
-
-        // If not found with original case, try capitalized version
-        if (count($segments) >= 2) {
-            $module = ucfirst($segments[0]);
-            $relativePath = implode('/', array_slice($segments, 1));
-
-            foreach ($templateDirs as $dir) {
-                $moduleBase = self::$viewsPath . "/$module/$dir/";
+    
+        // Get all existing module directories (case-insensitive match)
+        $actualModules = self::findMatchingDirectories(self::$viewsPath, $module);
+        
+        // Possible view directory names
+        $viewDirs = ['Views', 'views', 'View', 'view'];
+        
+        foreach ($actualModules as $actualModule) {
+            foreach ($viewDirs as $viewDir) {
+                $moduleBase = self::$viewsPath . "/$actualModule/$viewDir/";
                 $modulePath = self::findInsensitivePath($moduleBase, $relativePath);
                 if ($modulePath !== null) {
                     return $modulePath;
                 }
             }
         }
-
-        // Enhanced error reporting
-        throw new \RuntimeException("View [$original] not found in any location");
+    
+        // Enhanced debugging
+        $debugInfo = [
+            "View not found: $original",
+            "Scanned paths:",
+            "- Global: " . $globalBase . $viewPath,
+            "- Module locations:"
+        ];
+        
+        $scanned = glob(self::$viewsPath . "/*", GLOB_ONLYDIR);
+        foreach ($scanned as $path) {
+            $debugInfo[] = "- " . basename($path);
+        }
+        
+        throw new \RuntimeException(implode("\n", $debugInfo));
+    }
+    
+    protected static function findMatchingDirectories(string $basePath, string $targetDir): array
+    {
+        $matches = [];
+        $targetLower = strtolower($targetDir);
+        
+        if (!is_dir($basePath)) {
+            return [];
+        }
+        
+        foreach (scandir($basePath) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            if (!is_dir($basePath . '/' . $item)) continue;
+            
+            if (strtolower($item) === $targetLower) {
+                $matches[] = $item; // Return actual case
+            }
+        }
+        
+        return $matches;
     }
 
     protected static function findInsensitivePath(string $baseDir, string $relativePath): ?string
