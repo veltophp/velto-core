@@ -1413,10 +1413,10 @@ if (!function_exists('imageName')) {
 }
 
 if (!function_exists('imageSave')) {
-    function imageSave(?string $imageName)
+    function imageSave(?string $imageName = null)
     {
         return new class($imageName) {
-            protected ?string $filename;
+            protected ?string $filename = null;
             protected $file = null;
 
             public function __construct(?string $filename)
@@ -1432,8 +1432,8 @@ if (!function_exists('imageSave')) {
 
             public function to(string $relativePath): ?string
             {
-                if ($this->file === null || empty($this->filename)) {
-                    // Tidak ada file yang diberikan, cukup return null
+                if (!$this->file || !$this->filename) {
+                    // Tidak ada file atau nama, return null tanpa error
                     return null;
                 }
 
@@ -1449,7 +1449,7 @@ if (!function_exists('imageSave')) {
                     $tmpPath = $this->file['tmp_name'] ?? null;
 
                     if (!$tmpPath || !is_uploaded_file($tmpPath)) {
-                        return null; // Tidak valid, abaikan
+                        return null;
                     }
 
                     move_uploaded_file($tmpPath, "{$targetDir}/{$this->filename}");
