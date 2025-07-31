@@ -137,55 +137,54 @@ class View
     
         throw new \RuntimeException(implode("\n", $errorDetails));
     }
-    
+
     protected static function findInsensitivePath(string $baseDir, string $relativePath): ?string
     {
-        // Normalize paths
         $baseDir = rtrim(str_replace('\\', '/', $baseDir), '/') . '/';
         $relativePath = ltrim($relativePath, '/');
-    
+
         $parts = explode('/', $relativePath);
+        $filename = array_pop($parts);
         $currentPath = $baseDir;
-    
+
+        // Cari folder secara insensitive
         foreach ($parts as $part) {
-            if (!file_exists($currentPath) || !is_dir($currentPath)) {
+            if (!is_dir($currentPath)) {
                 error_log("Directory not found: $currentPath");
                 return null;
             }
-    
+
             $items = scandir($currentPath);
-            if ($items === false) {
-                error_log("Failed to scan directory: $currentPath");
-                return null;
-            }
-    
             $found = null;
             foreach ($items as $item) {
-                if ($item === '.' || $item === '..') {
-                    continue;
-                }
-                
+                if ($item === '.' || $item === '..') continue;
                 if (strcasecmp($item, $part) === 0) {
                     $found = $item;
                     break;
                 }
             }
-    
-            if ($found === null) {
-                error_log("File not found: $part in $currentPath");
+
+            if (!$found) {
+                error_log("Subdir not found: $part in $currentPath");
                 return null;
             }
-    
+
             $currentPath .= $found . '/';
         }
-    
-        $finalPath = rtrim($currentPath, '/');
-        if (!file_exists($finalPath)) {
-            error_log("Final path not found: $finalPath");
+
+        // Cari file (view) secara insensitive
+        if (!is_dir($currentPath)) {
             return null;
         }
-    
-        return $finalPath;
+
+        $files = scandir($currentPath);
+        foreach ($files as $file) {
+            if (strcasecmp($file, $filename) === 0) {
+                return $currentPath . $file;
+            }
+        }
+
+        return null;
     }
 
 
