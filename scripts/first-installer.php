@@ -32,7 +32,7 @@ if ($input === 'yes' || $input === 'y') {
     echo "\n Running migrations...\n\n";
 
     $phpBinary = PHP_BINARY;
-    $command = "{$phpBinary} velto migrate";
+    $command = "\"{$phpBinary}\" velto migrate";
 
     // Cross-platform shell execution
     if (stripos(PHP_OS, 'WIN') === 0) {
